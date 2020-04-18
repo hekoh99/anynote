@@ -1,4 +1,4 @@
-exports.css = `h2, h1, p, nav{
+h2, h1, p, nav{
   text-align: center;
   margin : 20px;
 }
@@ -84,4 +84,6 @@ form {
   text-align: right;
   border:none;
 }
-`
+#icon {
+  text-align: center;
+}

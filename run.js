@@ -1,39 +1,51 @@
-var http = require('http');
 var url = require('url');
 var contents = require('./lib/contents.js');
-var express = require('express');
+const express = require('express');
+var auth = require('./lib/auth');
+var helmet = require('helmet')
+var session = require('express-session');
+var MySQLStore = require('express-mysql-session')(session);
+const app = express();
+const port = 3000;
+var bodyParser = require('body-parser');
+app.use(helmet())
+app.use(bodyParser.urlencoded({ extended: false }))
+app.use(express.static('public'));
+var options = {
+    host: 'localhost',
+    port: 3306,
+    user: 'root',
+    password: 'rhgkdms99**',
+    database: 'anynote'
+};
 
-//서버 생성
-var app = http.createServer(function(request, response){
-  var _url = request.url; //url 추출
-  var pathname = url.parse(_url, true).pathname; //url 안의 pathname 추출
-  var root_path = pathname.split("/")[1];
+var sessionStore = new MySQLStore(options);
 
-  if(root_path === ''){ //main page로 접속 했을 때
-    contents.home(request, response);
-  }
-  else if(root_path === 'nav'){
-    contents.page(request, response);
-  }
-  else if(root_path === 'create'){ //글 생성 path
-    contents.create(request, response);
-  }
-  else if(root_path === 'create_process'){  //글 생성 후 post한 데이터 읽어오기
-    contents.create_process(request, response);
-  }
-  else if(root_path === 'update'){ //글 업데이트
-    contents.update(request, response);
-  }
-  else if(root_path === 'update_process'){ //업데이트한 post 처리
-    contents.update_process(request, response);
-  }
-  else if(root_path === 'delete_process'){ //삭제 처리
-    contents.delete_process(request, response);
-  }
-  else{
-    response.writeHead(404);
-    response.end('Not found');
-  }
+app.use(session({
+    key: 'session_cookie_name',
+    secret: 'session_cookie_secret',
+    store: sessionStore,
+    resave: false,
+    saveUninitialized: false
+}));
 
+var passport = require('./lib/passport')(app)
+
+var indexRouter = require('./routes/index');
+var navRouter = require('./routes/nav');
+var modifyRouter = require('./routes/modify');
+var signRouter = require('./routes/sign')(passport);
+
+app.get('*', function(request, response, next){
+  request.Auth = auth.check(request, response);
+  next();
+})
+app.use('/', indexRouter);
+app.use('/nav', navRouter);
+app.use('/modify', modifyRouter);
+app.use('/sign', signRouter);
+
+app.use(function(req, res, next) {
+  res.status(404).send('Sorry cant find that!');
 });
-app.listen(3000);
+app.listen(port);
